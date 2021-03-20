@@ -1,2 +1,17 @@
-# optinterp
-Computes the optimal nodes for 1D polynomial interpolation.
+# Optimal Interpolation Nodes
+
+## Usage
+
+TODO...
+
+## Background
+
+TODO...
+
+## Algorithm
+
+TODO...
+
+## Next Steps
+
+TODO...
