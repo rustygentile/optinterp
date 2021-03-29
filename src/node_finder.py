@@ -3,6 +3,8 @@ import numpy as np
 from scipy import optimize
 from enum import Enum
 
+__author__ = 'Rusty Gentile'
+
 logger = logging.getLogger(__name__)
 
 
@@ -16,63 +18,65 @@ class SymmetryOptions(Enum):
 class NodeFinder:
     """
     A system for finding optimal interpolation nodes.
-    
-    Some key fields:
-    ----------------
-    nodes - The current guess for optimal interpolation.
-    best_nodes - The best guess so far for optimal interpolation.
-    N - Number of nodes.
-    dxs - The distances between each node for each guess.
-    dLs - The differences between the Lebesgue function's local and global 
-          maxima at each guess.
-
-    Some key methods:
-    -----------------
-    next_nodes() - Computes the next guess for optimal interpolation.
-    ...
-
     """
     
-    def __init__(self, N, symmetry=1):
+    def __init__(self, n, symmetry=1):
          
-        self.N = N
-        self.dxs = []
-        self.dLs = []
+        self.n = n
         self.symmetry = SymmetryOptions(symmetry)
 
-        # Useful for evaluating the Legesgue function
-        self.iden = np.identity(N)
-        self.inv_eye = np.ones([N, N]) - self.iden
-        self.ones = np.ones([N, N])
+        self.nodes = np.arange(-1., 1., n)
+        self.best_nodes = np.arange(-1., 1., n)
+        self.n_guess = 0
+        self.best_dl = np.inf
+
+        # Useful for evaluating the Lebesgue function
+        self.iden = np.identity(n)
+        self.inv_eye = np.ones([n, n]) - self.iden
+        self.ones = np.ones([n, n])
+        self.lagrange_denominators = np.ones(n)
+
+        # Local maxima of the Lebesgue function
+        self.lx1 = np.zeros(n - 1)
+        self.lx2 = np.zeros(n - 1)
+        self.ly1 = np.zeros(n - 1)
+        self.ly2 = np.zeros(n - 1)
+
+        self.dx1 = np.zeros(n - 1)
+        self.dx2 = np.zeros(n - 1)
+        self.dy1 = np.zeros(n - 1)
+        self.dy2 = np.zeros(n - 1)
 
     def force_symmetry(self, arr):
-        """Ensures an array is a palindrome"""
+        """
+        Prameter
+        --------
+        arr - a 1D array
+
+        Returns
+        -------
+        arr - symmetric 1D array
+        """
         
-        if self.symmetry == SymmetryOptions.NONE:
-            return arr
-        
-        N = self.N - 1
-        midpoint = (N - 1.) / 2
-        res = np.copy(arr)
-        idx = range(np.int(np.ceil(midpoint)))
+        midpoint = self.n // 2
 
         if self.symmetry == SymmetryOptions.LEFT:
-            for i in idx:
-                res[-(i + 1)] = res[i]
+            arr[-midpoint:] = np.flip(arr[:midpoint])
+
         elif self.symmetry == SymmetryOptions.RIGHT:
-            for i in idx:
-                res[i] = res[-(i + 1)]
+            arr[:midpoint] = np.flip(arr[-midpoint:])
+
         elif self.symmetry == SymmetryOptions.AVERAGE:
-            for i in idx:  
-                avg = 0.5 * (arr[i] + arr[-(i+1)])
-                res[i] = avg
-                res[-(i + 1)] = avg
+            arr = (arr + np.flip(arr)) / 2
+
+        elif self.symmetry == SymmetryOptions.NONE:
+            pass
 
         else:
-            raise NotImplementedError(f'Unsupported symmetry opition: '
+            raise NotImplementedError(f'Unsupported symmetry option: '
                                       '{self.symmetry}')
 
-        return res
+        return arr
     
     def update_lagrange_denominators(self):
         """
@@ -83,95 +87,76 @@ class NodeFinder:
         Pi_{j}^N 1 / (x_i - x_j)
         """
         d_m = self.nodes * self.inv_eye
-        self.lagrange_denominators = 1. / np.prod(((self.nodes * self.ones)
-                                                  .transpose() - d_m) * self.inv_eye
-                                                  + self.iden, axis=1)
+        self.lagrange_denominators = 1. / np.prod(
+            ((self.nodes * self.ones)
+             .transpose() - d_m) * self.inv_eye
+            + self.iden, axis=1)
 
     def update_nodes(self, nodes):
         """Updates the current guess for optimal interpolation"""
+        self.n_guess += 1
         self.nodes = nodes
         self.update_lagrange_denominators()
-        _, dxs, _, dLs = self.local_maxima()
-        self.dxs.append(dxs)
-        self.dLs.append(dLs)
+        self.lx2 = np.copy(self.lx1)
+        self.dx2 = np.copy(self.dx1)
+        self.ly2 = np.copy(self.ly1)
+        self.dy2 = np.copy(self.dy1)
+        self.local_maxima()
 
     def lebesgue_function(self, x):
         """
         Evaluates the Lebesgue function for the current guess without 
         looping.
         """
-        diffs = xx = self.ones * x - self.nodes
-        l = self.inv_eye * diffs + np.diag(self.lagrange_denominators)
-        return np.sum(np.abs(np.prod(l, axis=1)))
+        diffs = self.ones * x - self.nodes
+        l_bases = self.inv_eye * diffs + np.diag(self.lagrange_denominators)
+        return np.sum(np.abs(np.prod(l_bases, axis=1)))
 
     def local_maxima(self, xtol=1e-12):
         """
-        Returns:
-        --------
-        xs - x coordinates of the local maxima of the Lebesgue function.
-        dxs - Distances bewteen the current set of nodes.
-        ls - Local maxima of the Lebesgue function.
-        dls - Differences between the local maxima of the Lebesgue function
-              and their median.
+        Updates the local maxima of the Lebesgue function for the current guess.
         """
-        xs = []
-        dxs = []
-        vals = []
-        for i in range(1, self.N):
-            lb = self.nodes[i - 1]
-            ub = self.nodes[i]
+        for i in range(self.n - 1):
+            lb = self.nodes[i]
+            ub = self.nodes[i + 1]
             res = optimize.fminbound(lambda x: -self.lebesgue_function(x),
                                      lb, ub, xtol=xtol)
-            xs.append(res)
-            dxs.append(ub - lb)
-            vals.append(self.lebesgue_function(res))
-        
-        ls = np.array(vals)
-        dls = ls - np.median(ls)
-        
-        return np.array(xs), np.array(dxs), ls, dls
+            self.lx1[i] = res
+            self.ly1[i] = self.lebesgue_function(res)
+            self.dx1[i] = ub - lb
+
+        self.dy1 = self.ly1 - np.mean(self.ly1)
 
     def next_nodes(self):
         """
         Calculates and updates the next guess for optimal interpolation nodes.
+
+        Returns
+        -------
+        dl_inf - the maximum difference between local optima of the Lebesgue function
         """
-        if len(self.dxs) < 2:
+
+        if self.n_guess < 2:
             raise RuntimeError('At least two initial guesses required to start'
                                ' searching for optimal interpolation nodes.')
-            
-        y1 = self.dLs[-2]
-        y2 = self.dLs[-1]
-        x1 = self.dxs[-2]
-        x2 = self.dxs[-1]
-        
-        dy = (y2 - y1) / (x2 - x1)
-        roots = np.abs(x2 - y2 / dy)
-        
-        # TODO: get rid of the for loop
-        for i in range(self.N - 1):
-            if abs(y2[i]) < 1e-3:
-                roots[i] = x2[i]
-        
+
+        # Secant method
+        dy = self.dy1 - self.dy2
+        dx = self.dx1 - self.dx2
+        dxdy = np.divide(dx, dy, out=np.zeros_like(dx), where=dy != 0)
+        roots = self.dx1 - self.dy1 * dxdy
+
+        # Calculate nodes from dx's
         new_dx = self.force_symmetry(roots)
-        
-        new_nodes = np.zeros(self.N)
-        for i in range(1, self.N):
-            new_nodes[i] = np.sum(new_dx[:i])
-    
+        new_nodes = np.zeros(self.n)
+        new_nodes[1:] = np.tril(self.ones[1:, 1:])@new_dx
         new_nodes = 2 * new_nodes / new_nodes[-1] - 1
         self.update_nodes(new_nodes)
-        
-        _, _, Ls, _ = self.local_maxima()
-        return Ls
-    
-    def initial_guess(self, N, alpha):
-        """A suggestion for initial guesses."""
-    
-        # The extended Chebyshev nodes
-        ig_cheb2 = np.polynomial.chebyshev.chebpts1(N)
-        ig_cheb2 = ig_cheb2 / ig_cheb2[-1]
-    
-        # Perturb the nodes using a small exponent. This should be a slightly 
-        # worse guess for optimal interpolation 
-        ig_cheb1 = np.abs(ig_cheb2) ** alpha * np.sign(ig_cheb2)
-        return ig_cheb1, ig_cheb2
+
+        # Check if this is the best guess so far
+        dl_inf = np.max(self.ly1) - np.min(self.ly1)
+        if dl_inf < self.best_dl:
+            self.best_nodes = np.copy(self.nodes)
+            self.best_dl = dl_inf
+
+        return dl_inf
