@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
-from src import NodeFinder
-from src import nodes
+from src.optinterp import NodeFinder
+from src.optinterp import nodes
 
 
 class NodeTest(unittest.TestCase):
@@ -27,6 +27,13 @@ class NodeTest(unittest.TestCase):
 
     def test_100_pts(self):
         nds = nodes(100, alpha=1.00000001, max_iter=10)
+        self.assertTrue(True)
+
+    def test_22_to_50(self):
+        for n in range(22, 50):
+            print(n)
+            #nds = nodes(n)
+
         self.assertTrue(True)
 
 

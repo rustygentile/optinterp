@@ -47,6 +47,11 @@ class NodeFinder:
         self.dy1 = np.zeros(n - 1)
         self.dy2 = np.zeros(n - 1)
 
+        # Assume that dx_min will not be less than dx_min for the extended Chebyshev nodes
+        cheb = np.polynomial.chebyshev.chebpts1(n)
+        cheb = cheb / cheb[-1]
+        self.min_dx = np.ones(n - 1) * (cheb[1] - cheb[0]) / 2.
+
     def force_symmetry(self, arr):
         """
         Prameter
@@ -143,8 +148,9 @@ class NodeFinder:
         # Secant method
         dy = self.dy1 - self.dy2
         dx = self.dx1 - self.dx2
-        dxdy = np.divide(dx, dy, out=np.zeros_like(dx), where=dy != 0)
+        dxdy = np.divide(dx, dy, out=np.zeros_like(dx), where=abs(dy) > 1e-12)
         roots = self.dx1 - self.dy1 * dxdy
+        #roots = np.maximum(roots, self.min_dx)
 
         # Calculate nodes from dx's
         new_dx = self.force_symmetry(roots)
