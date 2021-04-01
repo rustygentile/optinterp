@@ -1,6 +1,6 @@
 import logging
 from . import NodeFinder
-from . import chebyshev_exponent
+from . import chebyshev_exp
 
 __author__ = 'Rusty Gentile'
 
@@ -11,12 +11,19 @@ def nodes(n, ltol=1e-8, max_iter=100, alpha=1.000001, ig=None, symmetry=1):
     """
     Parameters
     ----------
-    n - Number of nodes.
-    ltol - Lebesgue function tolerance. All local maxima should be within one another by this value.
-    max_iter - Maximum iterations.
-    alpha - Exponent for calculating initial guesses.
-    ig - Initial guesses.
-    symmetry - Force symmetry options: 1 = right, 2 = left, 3 = average, 4 = none
+    n : int
+        Number of nodes.
+    ltol : float, optional
+        Lebesgue function tolerance. All local maxima will be within one
+        another by this value.
+    max_iter : int, optional
+        Maximum iterations.
+    alpha : float, optional
+        Exponent for calculating initial guesses.
+    ig : tuple
+        Initial guesses.
+    symmetry : int
+        Force symmetry options: 1 = right, 2 = left, 3 = average, 4 = none
 
     Returns
     -------
@@ -24,7 +31,8 @@ def nodes(n, ltol=1e-8, max_iter=100, alpha=1.000001, ig=None, symmetry=1):
     """
     nf = NodeFinder(n, symmetry=symmetry)
     if ig is None:
-        ig1, ig2 = chebyshev_exponent(n, alpha)
+        ig1 = chebyshev_exp(n, alpha)
+        ig2 = chebyshev_exp(n, 1.)
     else:
         ig1 = ig[0]
         ig2 = ig[1]

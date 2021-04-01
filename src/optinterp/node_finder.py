@@ -56,11 +56,12 @@ class NodeFinder:
         """
         Prameter
         --------
-        arr - a 1D array
+        arr : arraylike
+            A 1D array
 
         Returns
         -------
-        arr - symmetric 1D array
+        Symmetric 1D array
         """
         
         midpoint = self.n // 2
@@ -98,7 +99,18 @@ class NodeFinder:
             + self.iden, axis=1)
 
     def update_nodes(self, nodes):
-        """Updates the current guess for optimal interpolation"""
+        """
+        Updates the current guess for optimal interpolation
+
+        Parameters
+        ----------
+        nodes : arraylike
+            New nodes.
+
+        Returns
+        -------
+        None
+        """
         self.n_guess += 1
         self.nodes = nodes
         self.update_lagrange_denominators()
@@ -150,7 +162,6 @@ class NodeFinder:
         dx = self.dx1 - self.dx2
         dxdy = np.divide(dx, dy, out=np.zeros_like(dx), where=abs(dy) > 1e-12)
         roots = self.dx1 - self.dy1 * dxdy
-        #roots = np.maximum(roots, self.min_dx)
 
         # Calculate nodes from dx's
         new_dx = self.force_symmetry(roots)
