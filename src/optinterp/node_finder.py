@@ -47,14 +47,9 @@ class NodeFinder:
         self.dy1 = np.zeros(n - 1)
         self.dy2 = np.zeros(n - 1)
 
-        # Assume that dx_min will not be less than dx_min for the extended Chebyshev nodes
-        cheb = np.polynomial.chebyshev.chebpts1(n)
-        cheb = cheb / cheb[-1]
-        self.min_dx = np.ones(n - 1) * (cheb[1] - cheb[0]) / 2.
-
     def force_symmetry(self, arr):
         """
-        Prameter
+        Parameter
         --------
         arr : arraylike
             A 1D array
@@ -64,7 +59,7 @@ class NodeFinder:
         Symmetric 1D array
         """
         
-        midpoint = self.n // 2
+        midpoint = (len(arr) + 1) // 2
 
         if self.symmetry == SymmetryOptions.LEFT:
             arr[-midpoint:] = np.flip(arr[:midpoint])

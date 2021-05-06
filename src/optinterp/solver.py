@@ -27,7 +27,7 @@ def nodes(n, ltol=1e-8, max_iter=100, alpha=1.000001, ig=None, symmetry=1):
 
     Returns
     -------
-    optimal interpolation nodes based on the infinity norm of the Lebesgue function.
+    Optimal interpolation nodes based on the infinity norm of the Lebesgue function.
     """
     nf = NodeFinder(n, symmetry=symmetry)
     if ig is None:

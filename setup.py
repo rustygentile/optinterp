@@ -6,7 +6,7 @@ long_description = (here / 'README.md').read_text(encoding='utf-8')
 
 setup(
     name='optinterp',
-    version='0.0.5',
+    version='0.1.0',
     description='Optimal Interpolation Nodes',
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -30,7 +30,7 @@ setup(
     package_dir={'': 'src'},
     packages=find_packages(where='src'),
     python_requires='>=3.6, <4',
-    install_requires=['scipy==1.5.3'],
+    install_requires=['scipy>=1.0.0'],
     project_urls={
         'Source': 'https://github.com/rustygentile/optinterp',
     },
