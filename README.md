@@ -27,7 +27,7 @@ nds = nds / nds[-1]
 
 ## Algorithm Description
 
-This solution expoits the following properties:  
+This solution exploits the following properties:  
 * Optimal interpolation points can take values -1 and 1 for their minimum and maximum.
 * To mimimize the global maximum of the Lebesgue function, all local maxima should be equal.
 * Moving two adjacent nodes closer together reduces the local maximum of the Lebesgue function at the expense of increasing the other local maxima.
